@@ -44,6 +44,7 @@ export default function DashboardPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [newClient, setNewClient] = useState({ name: '', gaPropertyId: '', timezone: 'UTC' });
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Date Range State
     const [dateRange, setDateRange] = useState('last30Days');
@@ -159,6 +160,30 @@ export default function DashboardPage() {
         }
     };
 
+    const handleDeleteClient = async () => {
+        if (!selectedClientId) return;
+
+        const clientToDelete = clients.find(c => c.id === selectedClientId);
+        if (!clientToDelete) return;
+
+        if (!confirm(`Are you sure you want to delete ${clientToDelete.name}? This will permanently remove all its historical data from the dashboard.`)) {
+            return;
+        }
+
+        setIsDeleting(true);
+        setError('');
+
+        try {
+            await clientsAPI.delete(selectedClientId, true); // Hard delete
+            setSelectedClientId(null);
+            await loadClients();
+        } catch (err) {
+            setError(err.message || 'Failed to delete client');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const handleLogout = () => {
         clearAuth();
         router.push('/login');
@@ -231,18 +256,32 @@ export default function DashboardPage() {
                         {isAdmin() && (
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="label">Client</label>
-                                <select
-                                    className="select"
-                                    value={selectedClientId || ''}
-                                    onChange={(e) => setSelectedClientId(e.target.value ? parseInt(e.target.value) : null)}
-                                >
-                                    <option value="">Select a client</option>
-                                    {clients.map(client => (
-                                        <option key={client.id} value={client.id}>
-                                            {client.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <select
+                                        className="select"
+                                        style={{ flex: 1 }}
+                                        value={selectedClientId || ''}
+                                        onChange={(e) => setSelectedClientId(e.target.value ? parseInt(e.target.value) : null)}
+                                    >
+                                        <option value="">Select a client</option>
+                                        {clients.map(client => (
+                                            <option key={client.id} value={client.id}>
+                                                {client.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {selectedClientId && isAdmin() && (
+                                        <button
+                                            onClick={handleDeleteClient}
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0 12px', borderColor: '#fee2e2', color: '#dc2626' }}
+                                            title="Delete Client"
+                                            disabled={isDeleting}
+                                        >
+                                            {isDeleting ? '...' : '🗑️'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         )}
 
