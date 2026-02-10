@@ -9,6 +9,12 @@ import '../globals.css';
 
 export default function LoginPage() {
     const router = useRouter();
+
+    // Redirect to dashboard immediately since auth is disabled
+    require('react').useEffect(() => {
+        router.push('/dashboard');
+    }, [router]);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');

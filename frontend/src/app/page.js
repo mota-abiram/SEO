@@ -8,12 +8,7 @@ export default function HomePage() {
     const router = useRouter();
 
     useEffect(() => {
-        // Redirect to dashboard if authenticated, otherwise to login
-        if (isAuthenticated()) {
-            router.push('/dashboard');
-        } else {
-            router.push('/login');
-        }
+        router.push('/dashboard');
     }, [router]);
 
     return (

@@ -3,54 +3,39 @@
  * Client-side auth state management
  */
 
-// Save auth data to localStorage
-export function saveAuth(token, user) {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-}
+// Save auth data to localStorage (BYPASSED)
+export function saveAuth(token, user) { }
 
-// Get auth data from localStorage
+// Get auth data from localStorage (BYPASSED - returns default admin)
 export function getAuth() {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-
-    if (!token || !userStr) {
-        return null;
-    }
-
-    try {
-        const user = JSON.parse(userStr);
-        return { token, user };
-    } catch (error) {
-        return null;
-    }
+    return {
+        token: 'disabled-token',
+        user: { id: 1, email: 'admin@example.com', role: 'admin' }
+    };
 }
 
-// Clear auth data
+// Clear auth data (BYPASSED)
 export function clearAuth() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
 }
 
-// Check if user is authenticated
+// Check if user is authenticated (ALWAYS TRUE)
 export function isAuthenticated() {
-    return !!localStorage.getItem('token');
+    return true;
 }
 
-// Check if user is admin
+// Check if user is admin (ALWAYS TRUE)
 export function isAdmin() {
-    const auth = getAuth();
-    return auth?.user?.role === 'admin';
+    return true;
 }
 
-// Get current user
+// Get current user (ALWAYS ADMIN)
 export function getCurrentUser() {
-    const auth = getAuth();
-    return auth?.user || null;
+    return { id: 1, email: 'admin@example.com', role: 'admin' };
 }
 
 // Get client ID for current user
 export function getClientId() {
-    const auth = getAuth();
-    return auth?.user?.clientId || null;
+    return null;
 }

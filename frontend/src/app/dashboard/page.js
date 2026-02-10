@@ -56,23 +56,12 @@ export default function DashboardPage() {
     const [dailyData, setDailyData] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
 
-    // Check authentication on mount
+    // Simplified effect for bypass auth
     useEffect(() => {
-        if (!isAuthenticated()) {
-            router.push('/login');
-            return;
-        }
-
         const currentUser = getCurrentUser();
         setUser(currentUser);
-
-        // If client user, set their client ID
-        if (currentUser.role === 'client') {
-            setSelectedClientId(currentUser.clientId);
-        }
-
         loadClients();
-    }, [router]);
+    }, []);
 
     // Load clients (admin only)
     const loadClients = async () => {
@@ -234,12 +223,6 @@ export default function DashboardPage() {
                                 ➕ Add Client
                             </button>
                         )}
-                        <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                            {user?.email}
-                        </span>
-                        <button onClick={handleLogout} className="btn btn-secondary btn-sm">
-                            Logout
-                        </button>
                     </div>
                 </div>
             </header>
