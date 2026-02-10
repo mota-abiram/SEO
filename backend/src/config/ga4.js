@@ -64,11 +64,12 @@ async function verifyGA4Connection() {
         return true;
     } catch (error) {
         console.error('❌ Failed to initialize GA4 client:', error.message);
-        console.error('\n💡 Troubleshooting:');
-        console.error('   Local development: Run `gcloud auth application-default login`');
-        console.error('   GCP Cloud Run: Ensure Workload Identity is configured');
-        console.error('   GKE: Ensure Workload Identity binding is set up');
-        console.error('   AWS/Azure: Ensure Workload Identity Federation is configured');
+        console.error('   Searching for key at:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+
+        if (error.message.includes('ENOENT')) {
+            console.error('   💡 Error: The JSON key file was not found at that path.');
+        }
+
         return false;
     }
 }
@@ -115,7 +116,8 @@ async function getServiceAccountEmail() {
         }
         return 'Unknown (using Workload Identity)';
     } catch (error) {
-        return 'Error retrieving service account';
+        console.error('Error in getServiceAccountEmail:', error.message);
+        return `Error: ${error.message}`;
     }
 }
 
