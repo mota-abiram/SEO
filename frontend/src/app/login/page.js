@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authAPI } from '../../lib/api';
 import { saveAuth, isAuthenticated } from '../../lib/auth';
@@ -11,7 +11,7 @@ export default function LoginPage() {
     const router = useRouter();
 
     // Redirect to dashboard immediately since auth is disabled
-    require('react').useEffect(() => {
+    useEffect(() => {
         router.push('/dashboard');
     }, [router]);
 
