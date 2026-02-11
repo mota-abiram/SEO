@@ -352,6 +352,46 @@ router.get('/compare',
     }
 );
 
+/**
+ * POST /api/metrics/sync
+ * Manually trigger sync of yesterday's data for all clients (Admin only)
+ */
+router.post('/sync',
+    async (req, res) => {
+        try {
+            // Check if user is admin
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({
+                    error: 'Forbidden',
+                    message: 'Only admins can trigger manual sync'
+                });
+            }
+
+            const { syncYesterday } = require('../services/syncService');
+
+            // Trigger sync in background
+            syncYesterday()
+                .then(result => {
+                    console.log(`✅ Manual sync completed: ${result.successCount}/${result.totalClients} successful`);
+                })
+                .catch(err => {
+                    console.error(`❌ Manual sync failed:`, err);
+                });
+
+            res.json({
+                success: true,
+                message: 'Sync started in background. Check sync_logs table for results.'
+            });
+
+        } catch (error) {
+            console.error('Trigger sync error:', error);
+            res.status(500).json({
+                error: 'Failed to trigger sync'
+            });
+        }
+    }
+);
+
 // ============================================
 // Helper Functions
 // ============================================

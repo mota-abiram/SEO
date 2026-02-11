@@ -70,8 +70,9 @@ npm run dev
 You should see:
 ```
 ✅ GA4 Data API client initialized
-   Authentication method: Application Default Credentials (gcloud auth)
-   Project ID: your-project-id
+✅ Server running on port 5000
+✅ Authentication method: Application Default Credentials (gcloud auth)
+✅ Project ID: your-project-id
 ```
 
 ---

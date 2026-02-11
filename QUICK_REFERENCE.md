@@ -160,6 +160,10 @@ curl "http://localhost:5000/api/metrics/summary?clientId=1&from=2024-01-01&to=20
 curl "http://localhost:5000/api/metrics/export?clientId=1&from=2024-01-01&to=2024-01-31" \
   -H "Authorization: Bearer $TOKEN" \
   -o analytics.csv
+
+# Manually trigger sync (Admin only)
+curl -X POST http://localhost:5000/api/metrics/sync \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---

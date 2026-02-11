@@ -1,11 +1,19 @@
-# 📊 GA4 Analytics Dashboard - User Guide
-
+# GA4 Multi-Client Dashboard
 This dashboard provides a centralized view of Google Analytics 4 (GA4) data for multiple clients. It is designed to be simple, fast, and does not require a login.
 
 ## 🚀 Getting Started
 Access the live dashboard here: **[https://seo-beta-beige.vercel.app](https://seo-beta-beige.vercel.app)**
 
 ---
+
+
+
+### ⚠️ Critical Step: Permissions
+For the dashboard to see the data, you **MUST** invite the system's service account to the GA4 property:
+1. Copy the Service Account Email (seo-google@seo-486910.iam.gserviceaccount.com).
+2. In Google Analytics, go to **Admin** → **Property Property Access Management**.
+3. Click the **"+"** icon → **Add users**.
+4. Paste the email and assign the **Viewer** role.
 
 ## ➕ Adding a New Client
 To start tracking a new property:
@@ -16,12 +24,6 @@ To start tracking a new property:
 4. Select the **Timezone** for the client.
 5. Click **Save**.
 
-### ⚠️ Critical Step: Permissions
-For the dashboard to see the data, you **MUST** invite the system's service account to the GA4 property:
-1. Copy the Service Account Email (found in the error message if you forget this step).
-2. In Google Analytics, go to **Admin** → **Property Property Access Management**.
-3. Click the **"+"** icon → **Add users**.
-4. Paste the email and assign the **Viewer** role.
 
 ---
 
@@ -55,5 +57,3 @@ If you no longer need to track a property:
 * **Daily Updates**: The dashboard automatically syncs new data from Google every night at **5:00 AM**.
 * **Freshness**: Google Analytics data usually has a 24-48 hour delay before it is "finalized."
 
----
-*For technical support or issues, please contact the development team.*

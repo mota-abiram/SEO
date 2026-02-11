@@ -53,6 +53,11 @@ if (process.env.NODE_ENV === 'development') {
     app.use(morgan('combined'));
 }
 
+// Auto-sync middleware (for Render free tier)
+// Triggers sync if last sync was more than 12 hours ago
+const autoSyncMiddleware = require('./middleware/autoSync');
+app.use(autoSyncMiddleware);
+
 // ============================================
 // Routes
 // ============================================

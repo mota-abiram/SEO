@@ -153,7 +153,7 @@ router.post('/',
             console.log(`✅ Created client: ${client.name} (ID: ${client.id})`);
 
             // Trigger background backfill for the last 30 days
-            const { backfillClientData } = require('../services/syncService');
+            const { backfillClientData, syncYesterday } = require('../services/syncService');
             const endDate = new Date();
             endDate.setDate(endDate.getDate() - 1); // Yesterday
             const startDate = new Date();
@@ -164,8 +164,14 @@ router.post('/',
 
             // Run in background (don't await)
             backfillClientData(client.id, startStr, endStr)
-                .then(result => console.log(`🌊 Background backfill finished for ${client.name}: ${result.successCount} days`))
-                .catch(err => console.error(`❌ Background backfill failed for ${client.name}:`, err.message));
+                .then(result => {
+                    console.log(`🌊 Background backfill finished for ${client.name}: ${result.successCount} days`);
+                    // After backfilling the new client, sync yesterday's data for ALL clients
+                    // This ensures existing clients also get the latest data
+                    return syncYesterday();
+                })
+                .then(result => console.log(`✅ Synced yesterday's data for all clients: ${result.successCount}/${result.totalClients} successful`))
+                .catch(err => console.error(`❌ Background sync failed:`, err.message));
 
             res.status(201).json({
                 success: true,
