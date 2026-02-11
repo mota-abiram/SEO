@@ -25,28 +25,26 @@ async function autoSyncMiddleware(req, res, next) {
 
         lastSyncCheck = now;
 
-        // Check when last sync happened
+        // Check for any active clients missing data for yesterday
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
         const result = await query(
-            `SELECT MAX(created_at) as last_sync 
-       FROM sync_logs 
-       WHERE status = 'success'`
+            `SELECT c.id, c.name 
+       FROM clients c
+       LEFT JOIN daily_metrics dm ON c.id = dm.client_id AND dm.date = $1
+       WHERE c.is_active = true AND dm.id IS NULL
+       LIMIT 1`,
+            [yesterdayStr]
         );
 
-        const lastSync = result.rows[0]?.last_sync;
-
-        if (!lastSync) {
-            // No sync ever - trigger one
-            console.log('🔄 No previous sync found. Triggering initial sync...');
+        if (result.rows.length > 0) {
+            // At least one client is missing yesterday's data - trigger sync!
+            console.log(`⏰ Missing data for yesterday (${yesterdayStr}) for client: ${result.rows[0].name}. Triggering sync...`);
             triggerBackgroundSync();
-        } else {
-            const hoursSinceSync = (now - new Date(lastSync).getTime()) / (1000 * 60 * 60);
-
-            if (hoursSinceSync > 12) {
-                // Last sync was more than 12 hours ago
-                console.log(`⏰ Last sync was ${hoursSinceSync.toFixed(1)} hours ago. Triggering sync...`);
-                triggerBackgroundSync();
-            }
         }
+
 
         next();
 
