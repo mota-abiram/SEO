@@ -115,16 +115,17 @@ router.post('/',
 
             // Validate GA4 property access
             console.log(`🔍 Validating GA4 property access: ${gaPropertyId}`);
-            const hasAccess = await validatePropertyAccess(gaPropertyId);
+            const validation = await validatePropertyAccess(gaPropertyId);
 
-            if (!hasAccess) {
+            if (!validation.success) {
                 const { getServiceAccountEmail } = require('../config/ga4');
                 const email = await getServiceAccountEmail();
                 return res.status(400).json({
                     error: 'Cannot access GA4 property',
-                    message: `Please ensure the service account email has "Viewer" access in GA4.`,
+                    message: validation.error || `Please ensure the service account email has "Viewer" access in GA4.`,
                     serviceAccountEmail: email,
-                    propertyId: gaPropertyId
+                    propertyId: gaPropertyId,
+                    googleErrorCode: validation.code
                 });
             }
 

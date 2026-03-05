@@ -29,10 +29,24 @@ api.interceptors.request.use(
     }
 );
 
-// Response interceptor (simplified)
+// Response interceptor to extract error message
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Extract meaningful error message if available
+        if (error.response && error.response.data) {
+            const data = error.response.data;
+            const message = data.message || data.error || error.message;
+
+            // Create a new error with the better message
+            const enhancedError = new Error(message);
+            enhancedError.response = error.response;
+            enhancedError.status = error.response.status;
+            enhancedError.details = data.details;
+
+            return Promise.reject(enhancedError);
+        }
+
         return Promise.reject(error);
     }
 );

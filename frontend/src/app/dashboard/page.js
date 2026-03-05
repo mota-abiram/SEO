@@ -205,7 +205,7 @@ export default function DashboardPage() {
                     <h1 style={{
                         fontSize: '24px',
                         fontWeight: '700',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        background: 'linear-gradient(135deg, #fff02e 0%, #f59e0b 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         margin: 0
@@ -348,7 +348,7 @@ export default function DashboardPage() {
                             title="Total Sessions"
                             value={formatNumber(summary.totalSessions)}
                             icon="📊"
-                            color="#3b82f6"
+                            color="#fff02e"
                         />
                         <KPICard
                             title="Total Users"
@@ -401,9 +401,9 @@ export default function DashboardPage() {
                                     <Line
                                         type="monotone"
                                         dataKey="sessions"
-                                        stroke="#3b82f6"
+                                        stroke="#fff02e"
                                         strokeWidth={2}
-                                        dot={{ fill: '#3b82f6', r: 4 }}
+                                        dot={{ fill: '#fff02e', r: 4 }}
                                         activeDot={{ r: 6 }}
                                         name="Total Sessions"
                                     />

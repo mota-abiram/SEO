@@ -245,7 +245,7 @@ function formatGA4Date(ga4Date) {
 /**
  * Validate GA4 property access
  * @param {string} propertyId - GA4 Property ID
- * @returns {Promise<boolean>} True if accessible
+ * @returns {Promise<Object>} { success: boolean, error?: string }
  */
 async function validatePropertyAccess(propertyId) {
     try {
@@ -256,13 +256,24 @@ async function validatePropertyAccess(propertyId) {
             name: `${property}/metadata`
         });
 
-        return true;
+        return { success: true };
     } catch (error) {
         console.error(`❌ Cannot access property ${propertyId}:`, error.message);
-        if (error.message.includes('invalid_rapt')) {
-            console.error('💡 Hint: Run "gcloud auth application-default login" to re-authenticate.');
+
+        let errorMessage = error.message;
+        if (error.code === 'PERMISSION_DENIED') {
+            errorMessage = 'Permission denied. Ensure your service account has "Viewer" access to this GA4 property.';
+        } else if (error.code === 'NOT_FOUND' || error.message.includes('not found')) {
+            errorMessage = 'GA4 property not found. Please check the Property ID.';
+        } else if (error.message.includes('invalid_rapt') || error.message.includes('No such file')) {
+            errorMessage = 'Google authentication error. Check server credentials/key file.';
         }
-        return false;
+
+        return {
+            success: false,
+            error: errorMessage,
+            code: error.code
+        };
     }
 }
 

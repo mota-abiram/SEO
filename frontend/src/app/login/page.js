@@ -44,7 +44,7 @@ export default function LoginPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            background: 'linear-gradient(135deg, #fff02e 0%, #f59e0b 100%)'
         }}>
             <div className="card" style={{
                 maxWidth: '420px',
@@ -55,7 +55,7 @@ export default function LoginPage() {
                     <h1 style={{
                         fontSize: '32px',
                         fontWeight: '700',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        background: 'linear-gradient(135deg, #fff02e 0%, #f59e0b 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         marginBottom: '8px'
