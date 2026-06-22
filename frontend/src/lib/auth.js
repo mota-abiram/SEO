@@ -1,41 +1,82 @@
 /**
- * Authentication Utilities
- * Client-side auth state management
+ * Authentication via Supabase Auth.
+ *
+ * Login/session/token are handled by Supabase. Each user's role + client_id
+ * live in the `profiles` table; we hydrate them into a small in-memory cache so
+ * the dashboard's synchronous isAdmin()/getClientId() calls keep working.
+ *
+ * Call loadSession() once on each protected page (it's async) before relying on
+ * the synchronous getters.
  */
 
-// Save auth data to localStorage (BYPASSED)
-export function saveAuth(token, user) { }
+import { supabase } from './supabaseClient';
 
-// Get auth data from localStorage (BYPASSED - returns default admin)
-export function getAuth() {
-    return {
-        token: 'disabled-token',
-        user: { id: 1, email: 'admin@example.com', role: 'admin' }
+// Cached, profile-enriched user for the current session: {id,email,role,clientId}
+let _user = null;
+
+/**
+ * Hydrate _user from the current Supabase session + profile row.
+ * Returns the user object or null if not signed in.
+ */
+export async function loadSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        _user = null;
+        return null;
+    }
+
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, client_id, email')
+        .eq('id', session.user.id)
+        .single();
+
+    if (error || !profile) {
+        // Authenticated but no profile row — treat as not provisioned.
+        _user = null;
+        return null;
+    }
+
+    _user = {
+        id: session.user.id,
+        email: profile.email || session.user.email,
+        role: profile.role,
+        clientId: profile.client_id ?? null,
     };
+    return _user;
 }
 
-// Clear auth data (BYPASSED)
-export function clearAuth() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+/**
+ * Sign in with email/password, then hydrate the profile.
+ */
+export async function signIn(email, password) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return await loadSession();
 }
 
-// Check if user is authenticated (ALWAYS TRUE)
-export function isAuthenticated() {
-    return true;
+/**
+ * Sign out and clear the cache.
+ */
+export async function signOut() {
+    await supabase.auth.signOut();
+    _user = null;
 }
 
-// Check if user is admin (ALWAYS TRUE)
-export function isAdmin() {
-    return true;
-}
+// ---- synchronous getters (valid after loadSession/signIn) ----
 
-// Get current user (ALWAYS ADMIN)
 export function getCurrentUser() {
-    return { id: 1, email: 'admin@example.com', role: 'admin' };
+    return _user;
 }
 
-// Get client ID for current user
+export function isAuthenticated() {
+    return _user !== null;
+}
+
+export function isAdmin() {
+    return _user?.role === 'admin';
+}
+
 export function getClientId() {
-    return null;
+    return _user?.clientId ?? null;
 }

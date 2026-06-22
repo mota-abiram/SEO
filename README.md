@@ -1,269 +1,107 @@
 # GA4 Multi-Client Analytics Dashboard
 
-A production-ready SaaS application for managing multiple Google Analytics 4 properties with automated daily data sync and secure client dashboards.
+A SaaS dashboard for managing multiple Google Analytics 4 properties with automated
+daily data sync, secure client logins, and per-client data isolation — built on
+**Next.js + Supabase** with no server to run.
 
 ## 🏗️ Architecture
 
-**Tech Stack:**
-- **Backend**: Node.js, Express.js, PostgreSQL, node-cron
-- **Frontend**: Next.js 14 (App Router), React, Recharts
-- **Auth**: JWT with role-based access control
-- **GA4 Integration**: Google Analytics Data API v1 with Service Account
-- **Database**: PostgreSQL with connection pooling
+**Tech stack:**
+- **Frontend**: Next.js 14 (App Router), React, Recharts, `@supabase/supabase-js`
+- **Backend**: Supabase — Postgres, Auth, Row Level Security, Edge Functions (Deno), `pg_cron`
+- **GA4**: Google Analytics Data API v1, accessed from Edge Functions via a service account
+- **Auth & isolation**: Supabase Auth + RLS (admins see all clients; client users see only their own)
 
-**Key Features:**
-- ✅ Multi-client support (each client = separate GA4 property)
-- ✅ Automated daily data sync via cron job
-- ✅ Historical data storage (no live GA4 queries from dashboard)
-- ✅ Role-based access (Admin sees all, Client sees only their data)
-- ✅ Secure JWT authentication
-- ✅ Production-ready deployment configuration
+There is **no standalone server**. The browser talks directly to Supabase; scheduled
+work and GA4 access run in Edge Functions.
 
-## 📊 Metrics Collected
+```
+Next.js (browser) ──► Supabase Postgres (RLS-enforced reads)
+                 └──► Edge Function: create-client  (validate GA4 + insert + backfill)
+   pg_cron (daily) ──► Edge Function: daily-sync     (fetch GA4 → upsert metrics)
+```
 
-For each client, daily:
-- Sessions (total and organic)
-- Total Users
-- New Users
-- Pageviews
-- Average Session Duration
-- Bounce Rate
-- **Organic Sessions** (filtered by sessionDefaultChannelGroup = "Organic Search")
+## 📊 Metrics collected
 
-## 🚀 Quick Start
+Per client, per day: sessions, total users, new users, pageviews, average session
+duration, bounce rate, and organic sessions (`sessionDefaultChannelGroup = "Organic Search"`).
 
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Google Cloud Project with Analytics Data API enabled
-- Service Account JSON key with Viewer access to GA4 properties
+## 📁 Project structure
 
-### 1. Clone and Install
+```
+.
+├── frontend/                 # Next.js app (the entire UI)
+│   └── src/
+│       ├── app/              # login, dashboard, root
+│       ├── lib/              # supabaseClient, auth, api
+│       └── utils/
+├── supabase/
+│   ├── migrations/           # schema, RLS, auth trigger, cron schedule
+│   ├── functions/
+│   │   ├── _shared/ga4.ts    # GA4 token + Data API client (Deno)
+│   │   ├── daily-sync/       # scheduled metric sync
+│   │   └── create-client/    # admin "Add Client": validate + insert + backfill
+│   └── README.md             # backend setup & how isolation works
+├── ADDING_CLIENTS.md         # how to add clients
+└── .secrets/                 # local credential backups (gitignored)
+```
+
+## 🚀 Running locally
+
+The frontend points at your hosted Supabase project (there's nothing to run locally
+besides the UI):
+
 ```bash
-git clone <repo-url>
-cd seo
+cd frontend
 npm install
-cd frontend && npm install && cd ..
+# frontend/.env.local:
+#   NEXT_PUBLIC_SUPABASE_URL=https://<REF>.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+npm run dev          # http://localhost:3000
 ```
 
-### 2. Database Setup
+Or from the repo root: `npm run dev`.
+
+## ☁️ Deploying the Supabase backend
+
 ```bash
-# Create database
-createdb ga4_dashboard
+supabase link --project-ref <REF>
+supabase db push                                   # schema + RLS + auth trigger + cron
 
-# Run migrations
-psql ga4_dashboard < backend/database/schema.sql
+# secrets (server-side only)
+supabase secrets set GA4_SERVICE_ACCOUNT="$(cat .secrets/ga4-key.json)"
+supabase secrets set SYNC_SECRET="$(openssl rand -base64 32)"
+
+supabase functions deploy daily-sync   --no-verify-jwt
+supabase functions deploy create-client --no-verify-jwt
 ```
 
-### 3. Environment Configuration
+Then create the two Vault secrets used by the cron job (see
+`supabase/migrations/*_schedule_sync.sql`) and create your admin user. Full details,
+including how RLS enforces isolation, are in [supabase/README.md](supabase/README.md)
+and [supabase/functions/README.md](supabase/functions/README.md).
 
-**Backend** (`backend/.env`):
-```env
-# Server
-PORT=5000
-NODE_ENV=production
+## 👥 Users & clients
 
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/ga4_dashboard
+- **Admin** — sees and manages every client. Create via Supabase Auth with
+  `user_metadata: { role: "admin" }`.
+- **Client** — sees only their own property. Create with
+  `user_metadata: { role: "client", client_id: <id> }`.
+- **Adding a GA4 property** — admins use the dashboard's **Add Client** button (validates
+  GA4 access, inserts, and backfills 30 days). See [ADDING_CLIENTS.md](ADDING_CLIENTS.md).
 
-# JWT
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=7d
+## 🔄 Daily sync
 
-# Google Analytics
-GOOGLE_APPLICATION_CREDENTIALS=./config/service-account.json
+`pg_cron` invokes the `daily-sync` Edge Function at 05:00 UTC. It fetches yesterday's
+metrics for every active client and upserts them; each run is recorded in `sync_logs`.
+The daily run also keeps the Supabase project active (free tier won't pause).
 
-# Cron
-SYNC_CRON_SCHEDULE=0 5 * * *
-SYNC_TIMEZONE=America/New_York
-```
+## 🔐 Security
 
-**Frontend** (`frontend/.env.local`):
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-```
-
-### 4. Google Cloud Authentication Setup (Workload Identity)
-**NO SERVICE ACCOUNT JSON KEYS REQUIRED!**
-
-**For Local Development:**
-```bash
-# Install Google Cloud SDK
-brew install --cask google-cloud-sdk  # macOS
-
-# Authenticate
-gcloud auth application-default login
-
-# Set project
-gcloud config set project YOUR_PROJECT_ID
-```
-
-**For Production:**
-- Use Workload Identity Federation (GCP Cloud Run/GKE)
-- See `WORKLOAD_IDENTITY_SETUP.md` for detailed instructions
-
-**Grant GA4 Access:**
-1. Go to Google Analytics → Admin → Property Access Management
-2. Add your Google account (local) or service account email (production)
-3. Grant **Viewer** role
-
-### 5. Create Admin User
-```bash
-cd backend
-npm run create-admin
-# Follow prompts to create first admin user
-```
-
-### 6. Run Application
-
-**Development:**
-```bash
-# Terminal 1 - Backend
-cd backend
-npm run dev
-
-# Terminal 2 - Frontend
-cd frontend
-npm run dev
-```
-
-**Production:**
-```bash
-# Backend
-cd backend
-npm start
-
-# Frontend
-cd frontend
-npm run build
-npm start
-```
-
-## 📁 Project Structure
-
-```
-seo/
-├── backend/
-│   ├── config/
-│   │   └── service-account.json (gitignored)
-│   ├── database/
-│   │   └── schema.sql
-│   ├── src/
-│   │   ├── config/
-│   │   │   ├── database.js
-│   │   │   └── ga4.js
-│   │   ├── middleware/
-│   │   │   ├── auth.js
-│   │   │   └── errorHandler.js
-│   │   ├── routes/
-│   │   │   ├── auth.js
-│   │   │   ├── clients.js
-│   │   │   └── metrics.js
-│   │   ├── services/
-│   │   │   ├── ga4Service.js
-│   │   │   └── syncService.js
-│   │   ├── jobs/
-│   │   │   └── dailySync.js
-│   │   └── server.js
-│   ├── scripts/
-│   │   └── createAdmin.js
-│   ├── .env
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── login/
-│   │   │   ├── dashboard/
-│   │   │   └── layout.js
-│   │   ├── components/
-│   │   │   ├── auth/
-│   │   │   ├── dashboard/
-│   │   │   └── ui/
-│   │   ├── lib/
-│   │   │   ├── api.js
-│   │   │   └── auth.js
-│   │   └── utils/
-│   ├── .env.local
-│   └── package.json
-└── README.md
-```
-
-## 🔐 Security Features
-
-- ✅ JWT-based authentication with HTTP-only cookies
-- ✅ Role-based access control (Admin/Client)
-- ✅ Client data isolation (users can only see their own data)
-- ✅ Service Account credentials stored server-side only
-- ✅ Input validation and SQL injection prevention
-- ✅ HTTPS-ready (use reverse proxy like nginx)
-- ✅ Environment variable management
-- ✅ Password hashing with bcrypt
-
-## 🔄 Daily Sync Process
-
-1. **Cron job runs at 5 AM** (configurable timezone)
-2. **Fetches all active clients** from database
-3. **For each client:**
-   - Connects to GA4 property using Service Account
-   - Fetches yesterday's metrics
-   - Applies organic search filter
-   - Normalizes and validates data
-   - Inserts into `daily_metrics` table
-4. **Error handling:** Logs failures, continues with next client
-5. **Rate limiting:** Respects GA4 API quotas
-
-## 📈 API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login (returns JWT)
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/me` - Get current user
-
-### Clients (Admin only)
-- `GET /api/clients` - List all clients
-- `POST /api/clients` - Create new client
-- `PUT /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
-
-### Metrics
-- `GET /api/metrics?clientId=X&from=YYYY-MM-DD&to=YYYY-MM-DD` - Get metrics range
-- `GET /api/metrics/daily?clientId=X` - Get last 30 days
-- `GET /api/metrics/export?clientId=X&from=YYYY-MM-DD&to=YYYY-MM-DD` - CSV export
-
-## 🎨 Dashboard Features
-
-- **KPI Cards**: Sessions, Users, Organic Sessions, Bounce Rate
-- **Line Chart**: Daily trend visualization
-- **Data Table**: Detailed daily breakdown
-- **Date Range Picker**: Custom date filtering
-- **Client Selector**: Admin can switch between clients
-- **CSV Export**: Download data for external analysis
-- **Responsive Design**: Mobile-friendly interface
-
-## 🚢 Deployment
-
-### Railway / Render
-1. Connect GitHub repo
-2. Add environment variables
-3. Deploy backend and frontend separately
-4. Set up PostgreSQL addon
-
-### AWS / GCP
-1. Deploy backend to EC2 / Cloud Run
-2. Deploy frontend to S3+CloudFront / Cloud Storage+CDN
-3. Use RDS / Cloud SQL for PostgreSQL
-4. Set up environment variables in secrets manager
-
-### Docker (Optional)
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-```
+- Per-user data isolation enforced in the database by **Row Level Security**.
+- GA4 service-account key and the sync secret live in Supabase secrets/Vault — never in the browser.
+- The browser uses only the **anon key**; what it can read/write is gated by RLS.
 
 ## 📝 License
 
 MIT
-
-## 🤝 Support
-
-For issues or questions, contact your development team.

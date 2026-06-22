@@ -2,13 +2,15 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAuthenticated } from '../lib/auth';
+import { loadSession } from '../lib/auth';
 
 export default function HomePage() {
     const router = useRouter();
 
     useEffect(() => {
-        router.push('/dashboard');
+        loadSession().then((user) => {
+            router.replace(user ? '/dashboard' : '/login');
+        });
     }, [router]);
 
     return (

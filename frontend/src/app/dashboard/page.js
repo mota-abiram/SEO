@@ -14,10 +14,11 @@ import {
 } from 'recharts';
 import { metricsAPI, clientsAPI } from '../../lib/api';
 import {
-    isAuthenticated,
+    loadSession,
     getCurrentUser,
     isAdmin,
-    clearAuth
+    getClientId,
+    signOut
 } from '../../lib/auth';
 import {
     formatNumber,
@@ -56,12 +57,23 @@ export default function DashboardPage() {
     const [dailyData, setDailyData] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
 
-    // Simplified effect for bypass auth
+    // Guard the dashboard: redirect to login if not authenticated.
     useEffect(() => {
-        const currentUser = getCurrentUser();
-        setUser(currentUser);
-        loadClients();
-    }, []);
+        loadSession().then((currentUser) => {
+            if (!currentUser) {
+                router.replace('/login');
+                return;
+            }
+            setUser(currentUser);
+            if (currentUser.role === 'admin') {
+                loadClients();
+            } else {
+                // Client users are pinned to their own client.
+                setSelectedClientId(currentUser.clientId);
+                setLoading(false);
+            }
+        });
+    }, [router]);
 
     // Load clients (admin only)
     const loadClients = async () => {
@@ -173,8 +185,8 @@ export default function DashboardPage() {
         }
     };
 
-    const handleLogout = () => {
-        clearAuth();
+    const handleLogout = async () => {
+        await signOut();
         router.push('/login');
     };
 
@@ -223,6 +235,14 @@ export default function DashboardPage() {
                                 ➕ Add Client
                             </button>
                         )}
+                        {user?.email && (
+                            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                {user.email}
+                            </span>
+                        )}
+                        <button onClick={handleLogout} className="btn btn-secondary btn-sm">
+                            Log out
+                        </button>
                     </div>
                 </div>
             </header>

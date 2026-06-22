@@ -8,8 +8,15 @@ yarn.lock
 .env.local
 .env.*.local
 
-# Service Account (NEVER commit this!)
+# Service Account keys (NEVER commit these!)
 backend/config/service-account.json
+backend/ga4-key.json
+backend/*-key.json
+**/service-account*.json
+
+# Bundled Google Cloud SDK (do not commit — install locally instead)
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
 
 # Next.js
 frontend/.next/
@@ -46,3 +53,6 @@ coverage/
 .cache/
 temp/
 tmp/
+
+# Local credential backups (never commit)
+.secrets/

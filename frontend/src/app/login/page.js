@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authAPI } from '../../lib/api';
-import { saveAuth, isAuthenticated } from '../../lib/auth';
+import { signIn, loadSession } from '../../lib/auth';
 import { getErrorMessage } from '../../utils/helpers';
 import '../globals.css';
 
 export default function LoginPage() {
     const router = useRouter();
 
-    // Redirect to dashboard immediately since auth is disabled
+    // If already signed in, skip the login form.
     useEffect(() => {
-        router.push('/dashboard');
+        loadSession().then((user) => {
+            if (user) router.replace('/dashboard');
+        });
     }, [router]);
 
     const [email, setEmail] = useState('');
@@ -26,12 +27,8 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const response = await authAPI.login(email, password);
-
-            if (response.success) {
-                saveAuth(response.token, response.user);
-                router.push('/dashboard');
-            }
+            await signIn(email, password);
+            router.push('/dashboard');
         } catch (err) {
             setError(getErrorMessage(err));
         } finally {
@@ -120,19 +117,6 @@ export default function LoginPage() {
                         )}
                     </button>
                 </form>
-
-                <div style={{
-                    marginTop: '24px',
-                    padding: '16px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 'var(--border-radius)',
-                    fontSize: '13px',
-                    color: 'var(--text-secondary)'
-                }}>
-                    <strong>Demo Credentials:</strong><br />
-                    Email: admin@example.com<br />
-                    Password: admin123
-                </div>
             </div>
         </div>
     );
